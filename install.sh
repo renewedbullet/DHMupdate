@@ -46,16 +46,17 @@ enable_uart=1
 EOF
 )
 
-# Function to replace the [pi0] section
+# Backup config.txt before making changes
+sudo cp "$CONFIG_FILE" "$CONFIG_FILE.bak"
+
+# Function to replace the [pi0] section using awk
 replace_pi0_section() {
-    # Use sed to find the [pi0] section and replace it with the new content
-    if grep -q "\[pi0\]" "$CONFIG_FILE"; then
-        echo "Replacing [pi0] section in $CONFIG_FILE..."
-        sudo sed -i '/\[pi0\]/,/\[.*\]/c\'"$PI0_SECTION" "$CONFIG_FILE"
-    else
-        echo "[pi0] section not found, adding it..."
-        echo "$PI0_SECTION" | sudo tee -a "$CONFIG_FILE" > /dev/null
-    fi
+    awk -v new_section="$PI0_SECTION" '
+    BEGIN { found_pi0 = 0 }
+    /^\[pi0\]/ { found_pi0 = 1; print new_section; next }
+    /^\[.*\]/ { found_pi0 = 0 }
+    !found_pi0 { print $0 }
+    ' "$CONFIG_FILE" | sudo tee "$CONFIG_FILE.tmp" > /dev/null && sudo mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 }
 
 # Apply the changes to the [pi0] section
